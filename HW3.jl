@@ -429,10 +429,12 @@ row_sums = sum(table[:,1])
 # ╔═╡ 4a0314a6-7dc0-4ee9-842b-3f9bd4d61fb1
 col_sums = sum(table[4,:])
 
+# ╔═╡ 782d32fa-f32c-48e9-ae34-001b866508a0
+sum(table[:,:])
+
 # ╔═╡ cc62929e-f9af-11ea-06b9-439ac08dcb52
 row_col_answer = md"""
-
-Blablabla
+The sum of the matrix could be iterprated as the total probability of each transition happening, because the full alphabet considered for this exercise is inside the matrix then the total probability of all transitions is 1.
 """
 
 # ╔═╡ 2f8dedfc-fb98-11ea-23d7-2159bdb6a299
@@ -518,7 +520,7 @@ The only question left is: How do we compare two matrices? When two matrices are
 # ╔═╡ 13c89272-f934-11ea-07fe-91b5d56dedf8
 function matrix_distance(A, B)
 
-	return missing # do something with A .- B
+	return sum(abs.(A .- B))
 end
 
 # ╔═╡ 7d60f056-f931-11ea-39ae-5fa18a955a77
@@ -628,8 +630,11 @@ ngrams([1, 2, 3, 42], 2) == bigrams([1, 2, 3, 42])
 
 # ╔═╡ 7be98e04-fb6b-11ea-111d-51c48f39a4e9
 function ngrams(words, n)
+	starting_positions = 1:length(words)-n+1
 	
-	return missing
+	map(starting_positions) do i
+		words[i:i+n-1]
+	end
 end
 
 # ╔═╡ 052f822c-fb7b-11ea-382f-af4d6c2b4fdb
@@ -674,6 +679,15 @@ healthy = Dict("fruits" => ["🍎", "🍊"], "vegetables" => ["🌽", "🎃", "�
 # ╔═╡ c83b1770-fb82-11ea-20a6-3d3a09606c62
 healthy["fruits"]
 
+# ╔═╡ 48f03490-ce8f-4740-a41a-675044ff19c7
+healthy["hola"] = ["🌽", "🎃", "2"]
+
+# ╔═╡ 35fc645e-7df8-4bc6-aec4-ecb549157ff3
+healthy
+
+# ╔═╡ a96e6007-de58-4cc3-b04a-c2c9de14cc89
+!haskey(healthy, "vegetables")
+
 # ╔═╡ 52970ac4-fb82-11ea-3040-8bd0590348d2
 md"""
 (Did you notice something funny? The dictionary is _unordered_, this is why the entries were printed in reverse from the definition.)
@@ -700,9 +714,13 @@ Dict(
 # ╔═╡ 8ce3b312-fb82-11ea-200c-8d5b12f03eea
 function word_counts(words::Vector)
 	counts = Dict()
-	
-	# your code here
-	
+	for word in words
+		if(haskey(counts, word)) # If it is in the dict add 1 to ocurrencies
+			counts[word] = counts[word] + 1
+		else # If this word is not in the dict add it
+			counts[word] = 1
+		end
+	end
 	return counts
 end
 
@@ -715,7 +733,7 @@ md"""
 """
 
 # ╔═╡ 953363dc-fb84-11ea-1128-ebdfaf5160ee
-emma_count = missing
+emma_count = length( filter(x -> x == "Emma", emma_words) )
 
 # ╔═╡ 294b6f50-fb84-11ea-1382-03e9ab029a2d
 md"""
@@ -745,9 +763,10 @@ If the same n-gram occurs multiple times (e.g. "said Emma laughing"), then the l
 function completion_cache(grams)
 	cache = Dict()
 	
-	# your code here
-	
-	cache
+	for gram in grams
+		cache[ [gram[i] for i in 1:(length(gram)-1)] ] = gram[length(gram)]
+	end
+	return cache
 end
 
 # ╔═╡ 18355314-fb86-11ea-0738-3544e2e3e816
@@ -844,6 +863,9 @@ Enter your own text in the box below, and use that as training data to generate 
 
 # ╔═╡ 70169682-fb8c-11ea-27c0-2dad2ff3080f
 md"""Using $(@bind generate_sample_n_letters NumberField(1:5))grams for characters"""
+
+# ╔═╡ ec523789-6858-4b96-9789-aba801d1efa5
+generate_demo_sample
 
 # ╔═╡ 402562b0-fb63-11ea-0769-375572cc47a8
 md"""Using $(@bind generate_sample_n_words NumberField(1:5))grams for words"""
@@ -1368,6 +1390,7 @@ bigbreak
 # ╟─45c20988-f930-11ea-1d12-b782d2c01c11
 # ╠═58428158-84ac-44e4-9b38-b991728cd98a
 # ╠═4a0314a6-7dc0-4ee9-842b-3f9bd4d61fb1
+# ╠═782d32fa-f32c-48e9-ae34-001b866508a0
 # ╠═cc62929e-f9af-11ea-06b9-439ac08dcb52
 # ╟─d3d7bd9c-f9af-11ea-1570-75856615eb5d
 # ╟─2f8dedfc-fb98-11ea-23d7-2159bdb6a299
@@ -1411,6 +1434,9 @@ bigbreak
 # ╟─47836744-fb7e-11ea-2305-3fa5819dc154
 # ╠═df4fc31c-fb81-11ea-37b3-db282b36f5ef
 # ╠═c83b1770-fb82-11ea-20a6-3d3a09606c62
+# ╠═48f03490-ce8f-4740-a41a-675044ff19c7
+# ╠═35fc645e-7df8-4bc6-aec4-ecb549157ff3
+# ╠═a96e6007-de58-4cc3-b04a-c2c9de14cc89
 # ╟─52970ac4-fb82-11ea-3040-8bd0590348d2
 # ╠═8ce3b312-fb82-11ea-200c-8d5b12f03eea
 # ╠═a2214e50-fb83-11ea-3580-210f12d44182
@@ -1430,6 +1456,7 @@ bigbreak
 # ╟─d7b7a14a-fb90-11ea-3e2b-2fd8f379b4d8
 # ╟─1939dbea-fb63-11ea-0bc2-2d06b2d4b26c
 # ╟─70169682-fb8c-11ea-27c0-2dad2ff3080f
+# ╠═ec523789-6858-4b96-9789-aba801d1efa5
 # ╠═b5dff8b8-fb6c-11ea-10fc-37d2a9adae8c
 # ╟─402562b0-fb63-11ea-0769-375572cc47a8
 # ╟─ee8c5808-fb5f-11ea-19a1-3d58217f34dc
