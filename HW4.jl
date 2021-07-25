@@ -257,25 +257,14 @@ end
 # ╔═╡ abf20aa0-f31b-11ea-2548-9bea4fab4c37
 function greedy_seam(energies, starting_pixel::Int)
 	m,n = size(energies)
-# 	result = similar(1:m)
-# 	result[1] = starting_pixel
-	
-# 	for i in 2:m
-# 		neighbors =  unique([clamp(i, 1, m) for i in -1:1]) # Get neghbors
-# 		result[i] = minimum([energies[i+1, j] for j in neighbors]) # Get index of minor value in neighbors
-# 	end
-# 	return result
-	# allocating seam array
 	seam = zeros(Int, m)
 	seam[1] = starting_pixel
 	
 	# iterating over rows
-	for r in 2:m
-		# indices of column to the left and right (subject to boundary conditions)
-		left, right = max(1, seam[r - 1] - 1), min(n, seam[r - 1] + 1)
-		# finding minimal energy index in next row
-		next_c = left + argmin(energies[r, left:right]) - 1
-		seam[r] = next_c  # updating seam
+	for i in 2:m
+		left, right = max(1, seam[i - 1] - 1), min(n, seam[i - 1] + 1)
+		next_c = left + argmin(energies[i, left:right]) - 1
+		seam[i] = next_c
 	end
 	
 	return seam
@@ -386,12 +375,23 @@ function least_energy(energies, i, j)
 	m, n = size(energies)
 	
 	## base case
-	# if i == something
-	#    return (energies[...], ...) # no need for recursive computation in the base case!
-	# end
+	if i == m 
+	   return (energies[i, j], 0) # get this pixel (i,j) and don't jump
+	end
 	
 	## induction
 	# combine results from recursive calls to `least_energy`.
+	l, r = max(1, j - 1), min(size(energies, 2), j + 1) # indexes min-max
+	min_energy, col = typemax(Float64), 0
+	for k in l:r # Iterate over 1-j, j, j+1
+		energy, _ = least_energy(energies, i + 1, k) # Get energy sum in k
+		if energy < min_energy # Get lower energy sum
+			min_energy, col = energy, k
+		end
+	end
+	
+	# returning minimal energy sum and column to jump to
+	return energies[i, j] + min_energy, col # Current energy + energy sum of below
 end
 
 # ╔═╡ ad524df7-29e2-4f0d-ad72-8ecdd57e4f02
@@ -466,9 +466,14 @@ This will give you the method used in the lecture to perform [exhaustive search 
 
 # ╔═╡ 85033040-f372-11ea-2c31-bb3147de3c0d
 function recursive_seam(energies, starting_pixel)
-	m, n = size(energies)
-	# Replace the following line with your code.
-	[rand(1:starting_pixel) for i=1:m]
+	m, n = size(energies) # m = rows, n = columns
+	result = similar(1:n)
+	result[1] = starting_pixel
+	for i=2:m
+		result[i] = least_energy(energies, i-1, result[i-1])[2]
+	end
+	result
+	# [least_energy(energies, i-1, starting_pixel)[2] for i=2:m]
 end
 
 # ╔═╡ f92ac3e4-fa70-4bcf-bc50-a36792a8baaa
@@ -489,7 +494,15 @@ md"""
 
 # ╔═╡ 6d993a5c-f373-11ea-0dde-c94e3bbd1552
 exhaustive_observation = md"""
-<your answer here>
+For each iteration we need to compute the sum of each of the 3 pixels below, but at the same time for each one of this pixels we need to compute the sum of their respective pixels of below until we reach the lowest pixel.
+
+The previous analysis only applies in the case of calculating the pixel of below with the minimum energy, in the algorithm above we need to recalculate all the previous analysis when we go to the pixel below to calculate the next least energy pixel until we reach the limit.
+
+So for the first we are doing $O(3^n)$
+
+And for the second $O(n)$ 
+
+In total: $O(n(3^n))$
 """
 
 # ╔═╡ ea417c2a-f373-11ea-3bb0-b1b5754f2fac
@@ -526,8 +539,24 @@ You are expected to read and understand the [documentation on dictionaries](http
 function memoized_least_energy(energies, i, j, memory::Dict)
 	m, n = size(energies)
 	
-	# you should start by copying the code from 
-	# your (not-memoized) least_energies function.
+	## base case
+	if i == m 
+	   return (energies[i, j], 0) # get this pixel (i,j) and don't jump
+	end
+	
+	## induction
+	# combine results from recursive calls to `least_energy`.
+	l, r = max(1, j - 1), min(size(energies, 2), j + 1) # indexes min-max
+	min_energy, col = typemax(Float64), 0
+	for k in l:r # Iterate over 1-j, j, j+1
+		energy, _ = least_energy(energies, i + 1, k) # Get energy sum in k
+		if energy < min_energy # Get lower energy sum
+			min_energy, col = energy, k
+		end
+	end
+	
+	# returning minimal energy sum and column to jump to
+	return energies[i, j] + min_energy, col # Current energy + energy sum of below
 	
 end
 
@@ -1006,7 +1035,7 @@ bigbreak
 # ╟─9945ae78-f395-11ea-1d78-cf6ad19606c8
 # ╟─87efe4c2-f38d-11ea-39cc-bdfa11298317
 # ╟─f6571d86-f388-11ea-0390-05592acb9195
-# ╟─f626b222-f388-11ea-0d94-1736759b5f52
+# ╠═f626b222-f388-11ea-0d94-1736759b5f52
 # ╟─52452d26-f36c-11ea-01a6-313114b4445d
 # ╠═2a98f268-f3b6-11ea-1eea-81c28256a19e
 # ╟─32e9a944-f3b6-11ea-0e82-1dff6c2eef8d
