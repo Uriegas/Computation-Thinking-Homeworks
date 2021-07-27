@@ -549,7 +549,10 @@ function memoized_least_energy(energies, i, j, memory::Dict)
 	l, r = max(1, j - 1), min(size(energies, 2), j + 1) # indexes min-max
 	min_energy, col = typemax(Float64), 0
 	for k in l:r # Iterate over 1-j, j, j+1
-		energy, _ = least_energy(energies, i + 1, k) # Get energy sum in k
+		if ( !haskey(memory, (i+1,k) ) ) # Get the stored key
+			memory[(i+1,k)], _ = memoized_least_energy(energies, i + 1, k, memory) # Get energy sum in kv
+		end
+		energy = memory[(i+1, k)]
 		if energy < min_energy # Get lower energy sum
 			min_energy, col = energy, k
 		end
@@ -578,14 +581,24 @@ function memoized_recursive_seam(energies, starting_pixel)
 	# we set up the the _memory_: note the key type (Tuple{Int,Int}) and
 	# the value type (Tuple{Float64,Int}). 
 	# If you need to memoize something else, you can just use Dict() without types.
-	memory = Dict{Tuple{Int,Int},Tuple{Float64,Int}}()
+	memory = Dict{Tuple{Int,Int},Float64}()
 	
 	m, n = size(energies)
+	js = zeros(Int,m)
+	js[1]=starting_pixel
+	for k in 2:m
+		j1, j2 = max(1, js[k-1]-1), min(js[k-1]+1, n)
+		_, dir = findmin((memoized_least_energy(energies, k, j1, memory),memoized_least_energy(energies, k, j1+1, memory),memoized_least_energy(energies, k, j2, memory)))
+		js[k] = js[k-1]+(-1,0,1)[dir + (js[k-1]==1)]
+	end
+	js
 	
-	# Replace the following line with your code.
-	
-	# you should start by copying the code from 
-	# your (not-memoized) recursive_seam function.
+	# seam
+end
+
+# ╔═╡ 4c379ced-1286-431c-878d-a7331a29bb6b
+track_access(rand(10,10)) do tracked
+	memoized_recursive_seam(tracked, 1)
 end
 
 # ╔═╡ d941c199-ed77-47dd-8b5a-e34b864f9a79
@@ -648,13 +661,23 @@ Now it's easy to see that the above algorithm is equivalent to one that populate
 
 # ╔═╡ ff055726-f320-11ea-32f6-2bf38d7dd310
 function least_energy_matrix(energies)
-	result = copy(energies)
-	m,n = size(energies)
+# 	result = copy(energies)
+# 	m,n = size(energies)
 	
-	# your code here
+# 	result[:,i] = memoized_recursive_seam.(energies, 1:n)
+# 	return result
 	
-	
-	return result
+	result = zeros(size(energies))
+	m, n = size(energies)
+	result[end, :] .= @view energies[end, :] 
+	# the minimum energy on the last row is the energy itself
+	   
+	# go from the last row up, finding the minimum energy
+	for i in m-1:-1:1, j in 1:n
+			j₁, j₂ = max(1, j-1), min(j+1, n)
+			result[i,j] += findmin(@view result[i+1, j₁:j₂])[1] + energies[i,j]	
+	end
+	result
 end
 
 # ╔═╡ d3e69cf6-61b1-42fc-9abd-42d1ae7d61b2
@@ -683,9 +706,14 @@ function seam_from_precomputed_least_energy(energies, starting_pixel::Int)
 	least_energies = least_energy_matrix(energies)
 	m, n = size(least_energies)
 	
+	result = zeros(Int, m)
+	result[1] = starting_pixel
 	# Replace the following line with your code.
-	[starting_pixel for i=1:m]
-	
+	for i in 1:m-1
+		j₁, j₂ = clamp(result[i]-1, 1, n), clamp(result[i]+1, 1, n)
+		result[i+1] = result[i] + (-1,0,1)[(result[i]==1) + findmin(@view energies[i+1, j₁:j₂])[2]]
+	end
+	result
 end
 
 # ╔═╡ 51df0c98-f3c5-11ea-25b8-af41dc182bac
@@ -1059,7 +1087,7 @@ bigbreak
 # ╠═7ac5eb8d-9dba-4700-8f3a-1e0b2addc740
 # ╠═9ff0ce41-327f-4bf0-958d-309cd0c0b6e5
 # ╟─c572f6ce-f372-11ea-3c9a-e3a21384edca
-# ╠═6d993a5c-f373-11ea-0dde-c94e3bbd1552
+# ╟─6d993a5c-f373-11ea-0dde-c94e3bbd1552
 # ╟─ea417c2a-f373-11ea-3bb0-b1b5754f2fac
 # ╟─56a7f954-f374-11ea-0391-f79b75195f4d
 # ╠═b1d09bc8-f320-11ea-26bb-0101c9a204e2
@@ -1068,6 +1096,7 @@ bigbreak
 # ╠═b387f8e8-dced-473a-9434-5334829ecfd1
 # ╟─344964a8-7c6b-4720-a624-47b03483263b
 # ╠═3e8b0868-f3bd-11ea-0c15-011bbd6ac051
+# ╠═4c379ced-1286-431c-878d-a7331a29bb6b
 # ╠═d941c199-ed77-47dd-8b5a-e34b864f9a79
 # ╠═726280f0-682f-4b05-bf5a-688554a96287
 # ╟─c1ab3d5f-8e6c-4702-ad40-6c7f787f1c43
