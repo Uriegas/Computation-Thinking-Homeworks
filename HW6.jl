@@ -20,7 +20,6 @@ begin
 	Pkg.add([
 			Pkg.PackageSpec(name="PlutoUI",version="0.7"),
 			Pkg.PackageSpec(name="Plots"),
-
 			])
 
 	using PlutoUI, Plots
@@ -153,8 +152,7 @@ function counts2(data::Vector)
 	dict = counts(data)
 	kₛ = collect(keys(dict)) #Keys in vector
 	vₛ = collect(values(dict)) # values in vector
-	permₖ = sortperm(kₛ) # Ordering vector
-	return (kₛ[permₖ], vₛ[perm])
+	return (kₛ[sortperm(kₛ)], vₛ[sortperm(kₛ)])
 end
 
 # ╔═╡ 37294d02-8c4f-11eb-141e-0be49ea07611
@@ -174,8 +172,9 @@ We will use this function in the rest of the exercises.
 
 # ╔═╡ 447bc642-8c4f-11eb-1d4f-750e883b81fb
 function probability_distribution(data::Vector)
-	
-	return missing
+	frequencies = counts2(data)
+	# return sum.(frequency)
+	return (frequencies[1], frequencies[2] ./ sum(frequencies[2]) )
 end
 
 # ╔═╡ 6b1dc96a-8c4f-11eb-27ca-ffba02520fec
@@ -268,8 +267,7 @@ md"""
 
 # ╔═╡ 0233835a-8c50-11eb-01e7-7f80bd27683e
 function bernoulli(p::Real)
-	
-	return missing
+	return rand() < p
 end
 
 # ╔═╡ fdb3f1c8-8c4f-11eb-2281-bf01205bb804
@@ -281,9 +279,11 @@ md"""
 
 # ╔═╡ 08028df8-8c50-11eb-3b22-fdf5104a4d52
 function geometric(p::Real)
-	
-	
-	return missing
+	time = 1
+	while(bernoulli(p) != true)
+		time += 1
+	end
+	return time
 end
 
 # ╔═╡ 2b35dc1c-8c50-11eb-3517-83589f2aa8cc
@@ -308,7 +308,7 @@ md"""
 
 # ╔═╡ 370ec1dc-8688-443c-bf57-dd1b2a42a5fa
 interpretation_of_p_equals_one = md"""
-blablabla
+It will always return 1 because the bernoulli function returns rand() < p, given that $rand() ∈ [0, 1]$ therefore any value $\geq 1$ will return true the first time. 
 """
 
 # ╔═╡ fdb46c72-8c4f-11eb-17a2-8b7628b5d3b3
@@ -319,8 +319,7 @@ md"""
 
 # ╔═╡ 32700660-8c50-11eb-2fdf-5d9401c07de3
 function experiment(p::Real, N::Integer)
-	
-	return missing
+	return [geometric(p) for i ∈ 1:N]
 end
 
 # ╔═╡ 192caf02-5234-4379-ad74-a95f3f249a72
@@ -334,6 +333,12 @@ Let's run an experiment with $p=0.25$ and $N=10,000$. We will plot the resulting
 
 # ╔═╡ 3cd78d94-8c50-11eb-2dcc-4d0478096274
 large_experiment = experiment(0.25, 10000)
+
+# ╔═╡ c7878b55-6d28-44a7-8d23-bfcd5a11e38c
+xs, ps = probability_distribution(large_experiment)
+
+# ╔═╡ 62a04fa3-f439-49ad-843f-0244b51d3bf7
+counts2(large_experiment)
 
 # ╔═╡ 4118ef38-8c50-11eb-3433-bf3df54671f0
 let
@@ -350,7 +355,7 @@ md"""
 """
 
 # ╔═╡ 25ae71d0-e6e2-45ff-8900-3caf6fcea937
-
+m = sum(xs .* ps) / sum(ps)
 
 # ╔═╡ 3a7c7ca2-e879-422e-a681-d7edd271c018
 md"""
@@ -361,8 +366,11 @@ Note that `vline!` requires a *vector* of values where you wish to draw vertical
 
 # ╔═╡ 97d7d154-8c50-11eb-2fdd-fdf0a4e402d3
 let
+	xs, ps = probability_distribution(large_experiment)
 	
-	# your code here
+	bar(xs, ps, alpha=0.5, leg=false)
+	
+	vline!([m])
 end
 
 # ╔═╡ b1287960-8c50-11eb-20c3-b95a2a1b8de5
@@ -406,7 +414,13 @@ md"""
 """
 
 # ╔═╡ 1b1f870f-ee4d-497f-8d4b-1dba737be075
-
+let
+	xs, ps = probability_distribution(large_experiment)
+	
+	bar(log2.(xs), log2.(ps), alpha=0.5, leg=false)
+	
+	vline!([sum(xs .* ps) / sum(ps)])
+end
 
 # ╔═╡ fdcb1c1a-8c4f-11eb-0aeb-3fae27eaacbd
 md"""
@@ -418,31 +432,25 @@ As you vary $p$, what do you observe? Does that make sense?
 """
 
 # ╔═╡ d5b29c53-baff-4529-b2c1-776afe000d38
-@bind hello Slider( 2 : 0.5 : 10 )
+@bind p Slider( 0.01 : 0.01 : 1 )
 
-# ╔═╡ 9a92eba4-ad68-4c53-a242-734718aeb3f1
-hello
+# ╔═╡ 269e1461-91f0-4754-997f-c92a0d2f43da
+p
+
+# ╔═╡ 94ba6e37-e20f-4fa0-9dc1-a19a4e0c5c4f
+@bind N Slider( 0 : 100000 )
+
+# ╔═╡ 2e260ade-d52a-432c-8e66-b864814f8e4f
+N
 
 # ╔═╡ 48751015-c374-4a77-8a00-bca81bbc8305
-
-
-# ╔═╡ 562202be-5eac-46a4-9542-e6593bc39ff9
-
-
-# ╔═╡ e8d2a4ab-b710-4c16-ab71-b8c1e71fe442
-
-
-# ╔═╡ a486dc37-609d-4aae-b4ec-71de726191c7
-
-
-# ╔═╡ 65ea5492-d833-4754-89a3-0aa671c3ec7a
-
-
-# ╔═╡ 264089bc-aa30-450f-89f7-ffd589eee13c
-
-
-# ╔═╡ 0be83efa-e94f-4397-829f-24f705b044b1
-
+let
+	xs, ps = probability_distribution(experiment(p,N))
+	
+	bar(xs, ps, alpha=0.5, leg=false)
+	
+	vline!([sum(xs .* ps) / sum(ps)])
+end
 
 # ╔═╡ fdd5d98e-8c4f-11eb-32bc-51bc1db98930
 md"""
@@ -451,7 +459,10 @@ md"""
 """
 
 # ╔═╡ 406c9bfa-409d-437c-9b86-fd02fdbeb88f
-
+function mean(p)
+	x, f = probability_distribution(experiment(p, 10000))
+	return sum(x .* f) / sum(f)
+end
 
 # ╔═╡ f8b982a7-7246-4ede-89c8-b2cf183470e9
 md"""
@@ -459,21 +470,29 @@ md"""
 """
 
 # ╔═╡ caafed37-0b3b-4f6c-919f-f16df7248c23
-
+@bind p₂ Slider(0.01:0.01:1)
 
 # ╔═╡ 501bcc30-f96f-42e4-a5aa-09a4138b5b72
-
+p₂
 
 # ╔═╡ b763b6e8-8221-4b08-9a8e-8d5e63cbd144
-
+let
+	xs, ps = probability_distribution(experiment(p₂,N))
+	
+	bar(xs, ps, alpha=0.5, leg=false)
+	
+	vline!([mean(p₂)])
+end
 
 # ╔═╡ d2e4185e-8c51-11eb-3c31-637902456634
 md"""
 Based on my observations, it looks like we have the following relationship:
 
 ```math
-\langle \tau(p) \rangle = my \cdot answer \cdot here
+\langle \tau(p) \rangle = 
 ```
+
+Changes in p keeps does not affect the value of the mean, this one keeps in a boundary of values because we are using a geometry distribution for pseudo-randomness.
 """
 
 # ╔═╡ a82728c4-8c4c-11eb-31b8-8bc5fcd8afb7
@@ -1059,37 +1078,35 @@ end
 # ╟─e125bd7f-1881-4cff-810f-8af86850249d
 # ╟─fccff967-e44f-4f89-8995-d822783301c3
 # ╟─6cb36508-836a-4191-b615-45681a1f7443
-# ╠═370ec1dc-8688-443c-bf57-dd1b2a42a5fa
+# ╟─370ec1dc-8688-443c-bf57-dd1b2a42a5fa
 # ╟─fdb46c72-8c4f-11eb-17a2-8b7628b5d3b3
 # ╠═32700660-8c50-11eb-2fdf-5d9401c07de3
 # ╠═192caf02-5234-4379-ad74-a95f3f249a72
 # ╟─fdc1a9f2-8c4f-11eb-1c1e-5f92987b79c7
 # ╠═3cd78d94-8c50-11eb-2dcc-4d0478096274
+# ╠═c7878b55-6d28-44a7-8d23-bfcd5a11e38c
+# ╠═62a04fa3-f439-49ad-843f-0244b51d3bf7
 # ╠═4118ef38-8c50-11eb-3433-bf3df54671f0
 # ╟─c4ca3940-9bd5-4fa6-8c73-8675ef7d5f41
 # ╠═25ae71d0-e6e2-45ff-8900-3caf6fcea937
 # ╟─3a7c7ca2-e879-422e-a681-d7edd271c018
-# ╠═97d7d154-8c50-11eb-2fdd-fdf0a4e402d3
+# ╟─97d7d154-8c50-11eb-2fdd-fdf0a4e402d3
 # ╟─b1287960-8c50-11eb-20c3-b95a2a1b8de5
 # ╟─fdcab8f6-8c4f-11eb-27c6-3bdaa3fcf505
 # ╠═1b1f870f-ee4d-497f-8d4b-1dba737be075
 # ╟─fdcb1c1a-8c4f-11eb-0aeb-3fae27eaacbd
-# ╠═d5b29c53-baff-4529-b2c1-776afe000d38
-# ╠═9a92eba4-ad68-4c53-a242-734718aeb3f1
+# ╟─d5b29c53-baff-4529-b2c1-776afe000d38
+# ╟─269e1461-91f0-4754-997f-c92a0d2f43da
+# ╟─94ba6e37-e20f-4fa0-9dc1-a19a4e0c5c4f
+# ╟─2e260ade-d52a-432c-8e66-b864814f8e4f
 # ╠═48751015-c374-4a77-8a00-bca81bbc8305
-# ╠═562202be-5eac-46a4-9542-e6593bc39ff9
-# ╠═e8d2a4ab-b710-4c16-ab71-b8c1e71fe442
-# ╠═a486dc37-609d-4aae-b4ec-71de726191c7
-# ╠═65ea5492-d833-4754-89a3-0aa671c3ec7a
-# ╠═264089bc-aa30-450f-89f7-ffd589eee13c
-# ╠═0be83efa-e94f-4397-829f-24f705b044b1
 # ╟─fdd5d98e-8c4f-11eb-32bc-51bc1db98930
 # ╠═406c9bfa-409d-437c-9b86-fd02fdbeb88f
 # ╟─f8b982a7-7246-4ede-89c8-b2cf183470e9
-# ╠═caafed37-0b3b-4f6c-919f-f16df7248c23
-# ╠═501bcc30-f96f-42e4-a5aa-09a4138b5b72
+# ╟─caafed37-0b3b-4f6c-919f-f16df7248c23
+# ╟─501bcc30-f96f-42e4-a5aa-09a4138b5b72
 # ╠═b763b6e8-8221-4b08-9a8e-8d5e63cbd144
-# ╠═d2e4185e-8c51-11eb-3c31-637902456634
+# ╟─d2e4185e-8c51-11eb-3c31-637902456634
 # ╟─06412687-b44d-4a69-8d6c-0cf4eb51dfad
 # ╟─a82728c4-8c4c-11eb-31b8-8bc5fcd8afb7
 # ╟─23a1b76b-7393-4a4c-b6a5-40fb15dadd29
