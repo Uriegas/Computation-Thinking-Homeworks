@@ -279,6 +279,9 @@ md"""
 
 # ╔═╡ 08028df8-8c50-11eb-3b22-fdf5104a4d52
 function geometric(p::Real)
+	if(p == 0)
+		throw(ArgumentError("0 is not a valid input"))
+	end
 	time = 1
 	while(bernoulli(p) != true)
 		time += 1
@@ -514,8 +517,8 @@ md"""
 
 # ╔═╡ 45735d82-8c52-11eb-3735-6ff9782dde1f
 Ps = let 
-	
-	# your code here
+	p = 0.25
+	[ p*(1-p)^(n-1) for n ∈ 1:50 ]
 end
 
 # ╔═╡ dd80b2eb-e4c3-4b2f-ad5c-526a241ac5e6
@@ -525,7 +528,10 @@ md"""
 """
 
 # ╔═╡ 3df70c76-1aa6-4a0c-8edf-a6e3079e406b
+sum(Ps) #Nearly
 
+# ╔═╡ 82c57835-f175-4859-b99f-14b99bdb8dba
+[0.75^i for i ∈ 1:50]
 
 # ╔═╡ b1ef5e8e-8c52-11eb-0d95-f7fa123ee3c9
 md"""
@@ -537,9 +543,10 @@ md"""
 md"""
 
 ```math
-\sum_{k=1}^{\infty} P_k = \dots your \cdot answer \cdot here \dots = 1
-
+\sum_{k=1}^{\infty} P_k = p (1-p)^{k-1} = \frac{1}{p^2}= 1
 ```
+1-p is always fixed as p is fixed.
+Also note that $p(1-p)^{k-1}$ resamples to $nx^{n-1}$ which is a derivative and can be integrated.
 """
 
 # ╔═╡ 1b6035fb-d8fc-437f-b75e-f1a6b3b4cae7
@@ -553,7 +560,21 @@ md"""
 	"""
 
 # ╔═╡ dd59f48c-bb22-47b2-8acf-9c4ee4457cb9
+function Pn(n::Real, p::Float64)
+	[ p*(1-p)^(nᵢ-1) for nᵢ ∈ 1:n ]
+end
 
+# ╔═╡ 7827ab46-c2dd-43b6-8e9a-86502378c263
+@bind n₃ Slider( 1:100, 50, true )
+
+# ╔═╡ 91bdd9cf-519d-4f3b-8e6f-f86fe244a4ab
+@bind p₃ Slider( 0:0.05:1, 0.25, true )
+
+# ╔═╡ 643361c9-7f88-4aeb-b92a-e4cc7f47b046
+begin
+	plot(Pn(n₃, p₃), label="Pₙ")
+	plot!(Ps, label="Pₛ")
+end
 
 # ╔═╡ 5907dc0a-de60-4b58-ac4b-1e415f0051d2
 md"""
@@ -561,7 +582,12 @@ md"""
 	"""
 
 # ╔═╡ c7093f08-52d2-4f22-9391-23bd196c6fb9
+md"""
+As the formula states that $\sum_{k=1}^{\infty} P_k = 1$, then we can determine the error simply by finding the difference between the sums. As shown below:
+"""
 
+# ╔═╡ 014c4b49-e96a-40e9-9e24-ffb479e8681f
+error = abs(sum(Pn(n₃, p₃)) - sum(Ps))
 
 # ╔═╡ 316f369a-c051-4a35-9c64-449b12599295
 md"""
@@ -586,8 +612,8 @@ md"""
 
 # ╔═╡ 5185c938-8c53-11eb-132d-83342e0c775f
 function cumulative_sum(xs::Vector)
-	
-	return missing
+	cumulative = 0
+	return [cumulative+=i for i ∈ xs]
 end
 
 # ╔═╡ e4095d34-552e-495d-b318-9afe6839d577
@@ -602,7 +628,7 @@ md"""
 cumulative = cumulative_sum(Ps)
 
 # ╔═╡ e649c914-dd28-4194-9393-4dc8836f3743
-
+plot(cumulative, label="cumulative probability")
 
 # ╔═╡ fa59099a-8c52-11eb-37a7-291f80ea0406
 md"""
@@ -613,8 +639,9 @@ md"""
 # ╔═╡ 1ae91530-c77e-4d92-9ad3-c969bc7e1fa8
 md"""
 ```math
-C_n := \sum_{k=1}^n P_k = my \cdot answer \cdot here
+C_n := \sum_{k=1}^n P_k = 1
 ```
+As the total probability of the distribution is 1 the cumulative sum of each individual probability bin(interval) should be 1 too. 
 """
 
 # ╔═╡ fa599248-8c52-11eb-147a-99b5fb75d131
@@ -628,8 +655,9 @@ md"""
 # ╔═╡ 16b4e98c-4ae7-4145-addf-f43a0a96ec82
 md"""
 ```math
-n(r,p) = my \cdot answer \cdot here
+n(r,p) = P_{n+1} \le r \le P_n
 ```
+For a given r and a array of probabilities p, the n value is going to be the bin (Pn) that is nearest to r, mathematically $P_{n+1} \le r \le P_{n}$
 """
 
 # ╔═╡ fa671c06-8c52-11eb-20e0-85e2abb4ecc7
@@ -640,10 +668,21 @@ md"""
 """
 
 # ╔═╡ 47d56992-8c54-11eb-302a-eb3153978d26
-function geometric_bin(u::Real, p::Real)
-	
-	return missing
+function geometric_bin(r::Real, p::Real)
+	P = Pn(50, p)
+	cumulative = cumulative_sum(Pn)
+	error = 1;
+	for i ∈ 1:length(P)
+		floor(cumulative[i])
+	end
+	return
 end
+
+# ╔═╡ afaf678d-8099-474d-a17a-8f44d671a24a
+floor(2.1)
+
+# ╔═╡ 75718c48-3bbb-4fcc-935a-093e915efbb1
+c = cumulative_sum(Pn(100, .25))
 
 # ╔═╡ adfb343d-beb8-4576-9f2a-d53404cee42b
 md"""
@@ -1008,15 +1047,15 @@ bigbreak
 # ╔═╡ a5234680-8b02-11eb-2574-15489d0d49ea
 bigbreak
 
-# ╔═╡ 887a5106-c44a-4437-8c6f-04ad6610738a
-begin
-	fruits = ["🍉"]
-	length(fruits)
-end
-
 # ╔═╡ 2962c6da-feda-4d65-918b-d3b178a18fa0
 begin
 	fruits = ["🍒", "🍐", "🍋"]
+	length(fruits)
+end
+
+# ╔═╡ 887a5106-c44a-4437-8c6f-04ad6610738a
+begin
+	fruits = ["🍉"]
 	length(fruits)
 end
 
@@ -1113,13 +1152,18 @@ end
 # ╠═45735d82-8c52-11eb-3735-6ff9782dde1f
 # ╟─dd80b2eb-e4c3-4b2f-ad5c-526a241ac5e6
 # ╠═3df70c76-1aa6-4a0c-8edf-a6e3079e406b
+# ╠═82c57835-f175-4859-b99f-14b99bdb8dba
 # ╟─b1ef5e8e-8c52-11eb-0d95-f7fa123ee3c9
-# ╠═a3f08480-4b2b-46f2-af4a-14270869e766
+# ╟─a3f08480-4b2b-46f2-af4a-14270869e766
 # ╟─1b6035fb-d8fc-437f-b75e-f1a6b3b4cae7
 # ╟─c3cb9ea0-5e0e-4d5a-ab23-80ed8d91209c
 # ╠═dd59f48c-bb22-47b2-8acf-9c4ee4457cb9
+# ╟─7827ab46-c2dd-43b6-8e9a-86502378c263
+# ╟─91bdd9cf-519d-4f3b-8e6f-f86fe244a4ab
+# ╠═643361c9-7f88-4aeb-b92a-e4cc7f47b046
 # ╟─5907dc0a-de60-4b58-ac4b-1e415f0051d2
-# ╠═c7093f08-52d2-4f22-9391-23bd196c6fb9
+# ╟─c7093f08-52d2-4f22-9391-23bd196c6fb9
+# ╟─014c4b49-e96a-40e9-9e24-ffb479e8681f
 # ╟─316f369a-c051-4a35-9c64-449b12599295
 # ╟─9240f9dc-aa34-4e7b-8b82-86ea1376f527
 # ╟─d24ddb61-3d65-4bea-ad8f-d5a3ac44a563
@@ -1129,13 +1173,15 @@ end
 # ╟─0210b558-80ae-4a15-92c1-60b0fd7924f3
 # ╟─fa5843e8-8c52-11eb-2138-dd57b8bf25f7
 # ╠═7aa0ec08-8c53-11eb-1935-23237a448399
-# ╠═e649c914-dd28-4194-9393-4dc8836f3743
+# ╟─e649c914-dd28-4194-9393-4dc8836f3743
 # ╟─fa59099a-8c52-11eb-37a7-291f80ea0406
-# ╠═1ae91530-c77e-4d92-9ad3-c969bc7e1fa8
+# ╟─1ae91530-c77e-4d92-9ad3-c969bc7e1fa8
 # ╟─fa599248-8c52-11eb-147a-99b5fb75d131
-# ╠═16b4e98c-4ae7-4145-addf-f43a0a96ec82
+# ╟─16b4e98c-4ae7-4145-addf-f43a0a96ec82
 # ╟─fa671c06-8c52-11eb-20e0-85e2abb4ecc7
 # ╠═47d56992-8c54-11eb-302a-eb3153978d26
+# ╠═afaf678d-8099-474d-a17a-8f44d671a24a
+# ╠═75718c48-3bbb-4fcc-935a-093e915efbb1
 # ╟─a81516e8-0099-414e-9f2c-ab438764348e
 # ╟─adfb343d-beb8-4576-9f2a-d53404cee42b
 # ╠═5b7f2a91-a4f0-49f7-b8cf-6f677104d3e1
