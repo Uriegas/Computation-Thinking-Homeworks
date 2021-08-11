@@ -560,7 +560,7 @@ md"""
 	"""
 
 # ╔═╡ dd59f48c-bb22-47b2-8acf-9c4ee4457cb9
-function Pn(n::Real, p::Float64)
+function Pn(n::Real, p::Real)
 	[ p*(1-p)^(nᵢ-1) for nᵢ ∈ 1:n ]
 end
 
@@ -664,25 +664,29 @@ For a given r and a array of probabilities p, the n value is going to be the bin
 md"""
 #### Exercise 3.6
 
-👉 Implement this as a function `geomtric_bin(r, p)`, use the `floor` function.
+👉 Implement this as a function `geometric_bin(r, p)`, use the `floor` function.
 """
 
 # ╔═╡ 47d56992-8c54-11eb-302a-eb3153978d26
 function geometric_bin(r::Real, p::Real)
 	P = Pn(50, p)
-	cumulative = cumulative_sum(Pn)
-	error = 1;
-	for i ∈ 1:length(P)
-		floor(cumulative[i])
+	cumulative = cumulative_sum(P)
+	error = 1; # max probability of 1 = cumulative[length(cumulative)]
+	res = 0; # first index = cumulative[0]
+	for i ∈ 1:length(cumulative)
+		if( abs(cumulative[i] - r) < error )
+			error = abs(cumulative[i] - r)
+			res = i
+		end
 	end
-	return
+	return res
 end
 
-# ╔═╡ afaf678d-8099-474d-a17a-8f44d671a24a
-floor(2.1)
+# ╔═╡ 9f93f8e0-c58a-433e-bb37-e1416681eb77
+geometric_bin(0.1, 0.1)
 
-# ╔═╡ 75718c48-3bbb-4fcc-935a-093e915efbb1
-c = cumulative_sum(Pn(100, .25))
+# ╔═╡ 52d5cef9-1152-49ab-b745-020d451f1901
+geometric_bin(0.9, 0.1)
 
 # ╔═╡ adfb343d-beb8-4576-9f2a-d53404cee42b
 md"""
@@ -701,11 +705,14 @@ md"""
 👉 Generate `10_000` samples from `geometric_fast` with $p=10^{-10}$ and plot a histogram of them. This would have taken a very long time with the previous method!
 """
 
-# ╔═╡ 1d007d99-2526-4c19-9c96-3fad1750670e
+# ╔═╡ 3674c88a-929f-4825-892e-4747732c4863
+@bind p₄ Slider(0:0.01:0.1, 0.09, true)
 
+# ╔═╡ 1d007d99-2526-4c19-9c96-3fad1750670e
+g = [geometric_fast(p₄) for i ∈ 1:10000]
 
 # ╔═╡ c37bbb1f-8f5e-4097-9104-43ef65aa1cbd
-
+histogram(g)
 
 # ╔═╡ 79eb5e14-8c54-11eb-3c8c-dfeba16305b2
 md"""
@@ -727,9 +734,21 @@ md"""
 """
 
 # ╔═╡ 2270e6ba-8c5e-11eb-3600-615519daa5e0
-function atmosphere(p::Real, y0::Real, N::Integer)
+function atmosphere(p::Real, y₀::Real, N::Integer)
+	yₙ = y₀
 	
-	return missing
+	for i = 1:N
+		if rand() < p
+			if yₙ == 1
+				yₙ = 1
+			else
+				yₙ -= 1
+			end
+		else
+			yₙ += 1
+		end
+	end
+	return yₙ
 end
 
 # ╔═╡ 225bbcbd-0628-4151-954e-9a85d1020fd9
@@ -744,14 +763,20 @@ Let's simulate it for $10^7$ time steps with $x_0 = 10$ and $p=0.55$.
 👉 Calculate and plot the probability distribution of the walker's height.
 """
 
-# ╔═╡ deb5fbfb-1e03-42ce-a6d6-c8d3edd89a9a
+# ╔═╡ f0888603-070f-4ad5-b663-5e592a8112ac
+@bind pee Slider( 0 : 0.001 : 1, default = 0.55, show_value=true)
 
+# ╔═╡ 48c78bfe-37f3-4a10-9395-af526fd4aa96
+@bind y0 Slider( 0 : 1 : 100, default = 10, show_value=true)
+
+# ╔═╡ 982a1c62-b625-41d3-9e60-b451f980533a
+@bind t Slider( 1 : 1 : 1000, default = 100, show_value=true)
 
 # ╔═╡ 8517f92b-d4d3-46b5-9b9a-e609175b6481
-
-
-# ╔═╡ c1e3f066-5e12-4018-9fb2-4e7fc13172ba
-
+let 
+	xs, ps = probability_distribution([atmosphere(pee, y0, t) for i = 1:10000])
+	bar(xs, ps)
+end
 
 # ╔═╡ 1dc68e2e-8c5e-11eb-3486-454d58ac9c87
 md"""
@@ -759,7 +784,9 @@ md"""
 """
 
 # ╔═╡ bb8f69fd-c704-41ca-9328-6622d390f71f
-
+md"""
+$e^x$
+"""
 
 # ╔═╡ 1dc7389c-8c5e-11eb-123a-7f59dc6504cf
 md"""
@@ -770,10 +797,9 @@ md"""
 """
 
 # ╔═╡ d3bec73d-0106-496d-93ae-e1e26534b8c7
-
-
-# ╔═╡ d972be1f-a8ad-43ed-a90d-bca358d812c2
-
+md"""
+In general the probability tends to be normally distributed when it is inside some boundaries
+"""
 
 # ╔═╡ de83ffd6-cd0c-4b78-afe4-c0bcc54471d7
 md"""
@@ -781,7 +807,9 @@ md"""
 """
 
 # ╔═╡ fe45b8de-eb3f-43ca-9d63-5c01d0d27671
-
+md"""
+$P \approx P_0 \cdot e^{-\frac{g \cdot H\cdot M}{T_0 \cdot R_0}}$
+"""
 
 # ╔═╡ 5aabbec1-a079-4936-9cd1-9c25fe5700e6
 md"## Function library
@@ -1180,31 +1208,32 @@ end
 # ╟─16b4e98c-4ae7-4145-addf-f43a0a96ec82
 # ╟─fa671c06-8c52-11eb-20e0-85e2abb4ecc7
 # ╠═47d56992-8c54-11eb-302a-eb3153978d26
-# ╠═afaf678d-8099-474d-a17a-8f44d671a24a
-# ╠═75718c48-3bbb-4fcc-935a-093e915efbb1
+# ╠═9f93f8e0-c58a-433e-bb37-e1416681eb77
+# ╠═52d5cef9-1152-49ab-b745-020d451f1901
 # ╟─a81516e8-0099-414e-9f2c-ab438764348e
 # ╟─adfb343d-beb8-4576-9f2a-d53404cee42b
 # ╠═5b7f2a91-a4f0-49f7-b8cf-6f677104d3e1
 # ╠═b3b11113-2f0c-45d2-a14e-011a61ae8e9b
 # ╟─fc681dde-8c52-11eb-07fa-7d0ef9f22e93
+# ╠═3674c88a-929f-4825-892e-4747732c4863
 # ╠═1d007d99-2526-4c19-9c96-3fad1750670e
-# ╠═c37bbb1f-8f5e-4097-9104-43ef65aa1cbd
+# ╟─c37bbb1f-8f5e-4097-9104-43ef65aa1cbd
 # ╟─94053b41-4a06-435d-a91a-9dfa9655937c
 # ╟─79eb5e14-8c54-11eb-3c8c-dfeba16305b2
 # ╟─8c9c217e-8c54-11eb-07f1-c5fde6aa2946
 # ╠═2270e6ba-8c5e-11eb-3600-615519daa5e0
 # ╠═225bbcbd-0628-4151-954e-9a85d1020fd9
 # ╟─1dc5daa6-8c5e-11eb-1355-b1f627d04a18
-# ╠═deb5fbfb-1e03-42ce-a6d6-c8d3edd89a9a
-# ╠═8517f92b-d4d3-46b5-9b9a-e609175b6481
-# ╠═c1e3f066-5e12-4018-9fb2-4e7fc13172ba
+# ╠═f0888603-070f-4ad5-b663-5e592a8112ac
+# ╠═48c78bfe-37f3-4a10-9395-af526fd4aa96
+# ╠═982a1c62-b625-41d3-9e60-b451f980533a
+# ╟─8517f92b-d4d3-46b5-9b9a-e609175b6481
 # ╟─1dc68e2e-8c5e-11eb-3486-454d58ac9c87
-# ╠═bb8f69fd-c704-41ca-9328-6622d390f71f
+# ╟─bb8f69fd-c704-41ca-9328-6622d390f71f
 # ╟─1dc7389c-8c5e-11eb-123a-7f59dc6504cf
-# ╠═d3bec73d-0106-496d-93ae-e1e26534b8c7
-# ╠═d972be1f-a8ad-43ed-a90d-bca358d812c2
+# ╟─d3bec73d-0106-496d-93ae-e1e26534b8c7
 # ╟─de83ffd6-cd0c-4b78-afe4-c0bcc54471d7
-# ╠═fe45b8de-eb3f-43ca-9d63-5c01d0d27671
+# ╟─fe45b8de-eb3f-43ca-9d63-5c01d0d27671
 # ╟─a5234680-8b02-11eb-2574-15489d0d49ea
 # ╟─5aabbec1-a079-4936-9cd1-9c25fe5700e6
 # ╟─42d6b87d-b4c3-4ccb-aceb-d1b020135f47
