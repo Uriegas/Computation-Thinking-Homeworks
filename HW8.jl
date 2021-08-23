@@ -609,20 +609,17 @@ Multivariable calculus tells us that the gradient $\nabla f(a, b)$ at a point $(
 # ╔═╡ 852be3c4-12e8-11eb-1bbb-5fbc0da74567
 function gradient_descent_2d_step(f, x0, y0; η=0.01)
 	
-	return -η .* gradient(f, x0, y0)
+	return [x0, y0] .- η .* gradient(f, x0, y0)
 end
 
 # ╔═╡ 8a114ca8-12e8-11eb-2de6-9149d1d3bc3d
-function gradient_descent_2d(f, x0, y0; η=0.01)
-	vars = [x0, y0]
-	while true
-		x, y = vars
-		vars += gradient_descent_2d_step(f, vars[1], vars[2])
-		if(abs(x - vars[1]) > η && abs(y - vars[2]) > η)
-			break
-		end
+function gradient_descent_2d(f, x0, y0; η=0.01, N_steps=1000)
+	x, y = x0, y0
+	
+	for _ in 1:N_steps # leads to MethodError: no method matching iterate(::Missing)
+		x, y = gradient_descent_2d_step(f, x, y; η)
 	end
-	return vars
+	return x, y
 end
 
 # ╔═╡ 4454c2b2-12e3-11eb-012c-c362c4676bf6
@@ -794,9 +791,12 @@ $$\mathcal{L}(\mu, \sigma) := \sum_i [f_{\mu, \sigma}(x_i) - y_i]^2$$
 
 # ╔═╡ 2fc55daa-124f-11eb-399e-659e59148ef5
 function loss_dice(μ, σ)
-	
-	return missing
+	xᵢ, yᵢ = dice_x, dice_y
+	return sum((gauss.(xᵢ, μ, σ) .- yᵢ) .^ 2)
 end
+
+# ╔═╡ f0741821-5b28-4a99-940a-913ef78fbda7
+loss_dice(guess_μ, guess_σ)
 
 # ╔═╡ 3a6ec2e4-124f-11eb-0f68-791475bab5cd
 loss_dice(guess_μ + 3, guess_σ) >
@@ -809,10 +809,7 @@ md"""
 
 # ╔═╡ a150fd60-124f-11eb-35d6-85104bcfd0fe
 found_μ, found_σ = let
-	
-	# your code here
-	
-	missing, missing
+	gradient_descent_2d(loss_dice, 30, 1; η=2) # η is the step size (bigger = faster approximation)
 end
 
 # ╔═╡ ac320522-124b-11eb-1552-51c2adaf2521
@@ -898,8 +895,13 @@ This time, instead of comparing two vectors of numbers, we need to compare two v
 
 # ╔═╡ 754b5368-12e8-11eb-0763-e3ec56562c5f
 function loss_sir(β, γ)
-	
-	return missing
+	y = spatial_results
+	f = euler_SIR(β, γ, [0.99, 0.01, 0.00], spatial_T) # function results
+	diffs = f .- y # fᵢ(x) - yᵢ
+	for i ∈ 1:3 # for each S, I, R square it
+		diffs[i].^ 2
+	end
+	return sum(sum(diffs))/3
 end
 
 # ╔═╡ ee20199a-12d4-11eb-1c2c-3f571bbb232e
@@ -912,10 +914,7 @@ md"""
 
 # ╔═╡ 6e1b5b6a-12e8-11eb-3655-fb10c4566cdc
 found_β, found_γ = let
-	
-	# your code here
-	
-	missing, missing
+	gradient_descent_2d(loss_sir,0.02, 0.002; η=1e-7) #initial guess = 0.5, 0.5
 end
 
 # ╔═╡ 496b8816-12d3-11eb-3cec-c777ba81eb60
@@ -1336,6 +1335,7 @@ TODO = html"<span style='display: inline; font-size: 2em; color: purple; font-we
 # ╟─57090426-124e-11eb-0a17-1566ae96b7c2
 # ╟─66192a74-124c-11eb-0c6a-d74aecb4c624
 # ╟─70f0fe9c-124c-11eb-3dc6-e102e68673d9
+# ╠═f0741821-5b28-4a99-940a-913ef78fbda7
 # ╟─41b2262a-124e-11eb-2634-4385e2f3c6b6
 # ╠═0dea1f70-124c-11eb-1593-e535ab21976c
 # ╟─471cbd84-124c-11eb-356e-371d23011af5
