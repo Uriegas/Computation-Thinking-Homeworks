@@ -241,7 +241,7 @@ function euler_integrate(fprime::Function, fa::Number,
 	a0 = T[1]
 	h = step(T)
 	f = (i, x) -> euler_integrate_step(fprime, last(i), a0 + x, h)
-	return accumulate( f, T, init = a0 )
+	return accumulate( f, T, ss)
 end
 
 # ╔═╡ 4d0efa66-12c6-11eb-2027-53d34c68d5b0
@@ -345,11 +345,13 @@ r(t+h) &= r(t) + h\,\cdot \gamma i(t)
 function euler_SIR_step(β, γ, sir_0::Vector, h::Number)
 	s, i, r = sir_0
 	
-	return [
-		missing,
-		missing,
-		missing,
-	]
+	fₛ = (s, i) -> s - h * β * s * i
+	fᵢ = (s, i, r) -> i + h * (β * s * i - γ * i)
+	fᵣ = (r, i) -> r + h * γ * i
+	
+	f = (s, i, r) -> [fₛ(s,i), fᵢ(s,i,r), fᵣ(r,i)]
+						
+	return f(s, i, r)
 end
 
 # ╔═╡ 84daf7c4-1244-11eb-0382-d1da633a63e2
@@ -371,11 +373,20 @@ function euler_SIR(β, γ, sir_0::Vector, T::AbstractRange)
 	
 	num_steps = length(T)
 	
-	return missing
+	f = (x) -> euler_SIR_step(β, γ, last(x), h)
+
+	res = [sir_0]
+	for i ∈ 2:num_steps
+		push!(res, f(res))
+	end
+	return res
 end
 
 # ╔═╡ 4b791b76-12cd-11eb-1260-039c938f5443
 sir_T = 0 : 0.1 : 60.0
+
+# ╔═╡ edd962bb-6f0e-4ba9-bdaf-4918a8bcc01e
+length(sir_T)
 
 # ╔═╡ 0a095a94-1245-11eb-001a-b908128532aa
 sir_results = euler_SIR(0.3, 0.15, 
@@ -410,7 +421,7 @@ md"""
 
 # ╔═╡ 589b2b4c-1245-11eb-1ec7-693c6bda97c4
 default_SIR_parameters_observation = md"""
-_your answer here_
+There is a peah in the infected around 30, then it goes down, after this, the suspected agents slow down also the recovered because there are not people getting infected. At first sight it seems that not everybody gets infected because the recovered are 75% when the infectious decline to 0% dues there are no future infections in the 24% remaining suspected.
 """
 
 # ╔═╡ 58b45a0e-1245-11eb-04d1-23a1f3a0f242
@@ -419,7 +430,17 @@ md"""
 """
 
 # ╔═╡ 68274534-1103-11eb-0d62-f1acb57721bc
+md"""
+β = $(@bind β Slider(0.01:0.01:1, default=0.3, show_value=true))
 
+γ = $(@bind γ Slider(0.01:0.01:1, default=0.15, show_value=true))
+
+"""
+
+# ╔═╡ 798c3e7d-59d9-4f00-a2d2-d3cf47d82a0b
+plot_sir!(plot(), 0:0.1:60.0, euler_SIR(β, γ, 
+	[0.99, 0.01, 0.00], 
+	0:0.1:60.0))
 
 # ╔═╡ 82539bbe-106e-11eb-0e9e-170dfa6a7dad
 md"""
@@ -442,8 +463,8 @@ You should use **anonymous functions** for this. These have the form `x -> x^2`,
 
 # ╔═╡ bd8522c6-12e8-11eb-306c-c764f78486ef
 function ∂x(f::Function, a, b)
-	
-	return missing
+	f′ = (x) -> f(x, b)
+	return finite_difference_slope(f′,a)
 end
 
 # ╔═╡ 321964ac-126d-11eb-0a04-0d3e3fb9b17c
@@ -454,8 +475,8 @@ end
 
 # ╔═╡ b7d3aa8c-12e8-11eb-3430-ff5d7df6a122
 function ∂y(f::Function, a, b)
-	
-	return missing
+	f′ = (y) -> f(a, y)
+	return finite_difference_slope(f′, b)
 end
 
 # ╔═╡ a15509ee-126c-11eb-1fa3-cdda55a47fcb
@@ -473,7 +494,7 @@ md"""
 # ╔═╡ adbf65fe-12e8-11eb-04e9-3d763ba91a63
 function gradient(f::Function, a, b)
 	
-	return missing
+	return [∂x(f,a,b), ∂y(f,a,b)]
 end
 
 # ╔═╡ 66b8e15e-126c-11eb-095e-39c2f6abc81d
@@ -500,8 +521,7 @@ We want to minimize a 1D function, i.e. a function $f: \mathbb{R} \to \mathbb{R}
 
 # ╔═╡ a7f1829c-12e8-11eb-15a1-5de40ed92587
 function gradient_descent_1d_step(f, x0; η=0.01)
-	
-	return missing
+	return -η * finite_difference_slope(f, x0)
 end
 
 # ╔═╡ d33271a2-12df-11eb-172a-bd5600265f49
@@ -554,8 +574,11 @@ md"""
 
 # ╔═╡ 9489009a-12e8-11eb-2fb7-97ba0bdf339c
 function gradient_descent_1d(f, x0; η=0.01, N_steps=1000)
-	
-	return missing
+	x = x0
+	for i ∈ 1:N_steps
+		x += gradient_descent_1d_step(f, x; η=0.01)
+	end
+	return x
 end
 
 # ╔═╡ 34dc4b02-1248-11eb-26b2-5d2610cfeb41
@@ -572,7 +595,7 @@ Right now we take a fixed number of steps, even if the minimum is found quickly.
 
 # ╔═╡ ebca11d8-12c9-11eb-3dde-c546eccf40fc
 better_stopping_idea = md"""
-_your answer here_
+When the steps are so small in such a way that is obvious that we already are in the local minimum.
 """
 
 # ╔═╡ 9fd2956a-1248-11eb-266d-f558cda55702
@@ -586,13 +609,20 @@ Multivariable calculus tells us that the gradient $\nabla f(a, b)$ at a point $(
 # ╔═╡ 852be3c4-12e8-11eb-1bbb-5fbc0da74567
 function gradient_descent_2d_step(f, x0, y0; η=0.01)
 	
-	return missing
+	return -η .* gradient(f, x0, y0)
 end
 
 # ╔═╡ 8a114ca8-12e8-11eb-2de6-9149d1d3bc3d
 function gradient_descent_2d(f, x0, y0; η=0.01)
-	
-	return missing
+	vars = [x0, y0]
+	while true
+		x, y = vars
+		vars += gradient_descent_2d_step(f, vars[1], vars[2])
+		if(abs(x - vars[1]) > η && abs(y - vars[2]) > η)
+			break
+		end
+	end
+	return vars
 end
 
 # ╔═╡ 4454c2b2-12e3-11eb-012c-c362c4676bf6
@@ -687,7 +717,9 @@ md"""
 """
 
 # ╔═╡ 6d1ee93e-1103-11eb-140f-63fca63f8b06
-
+md"""
+Yes, it is possible, but the gradient descent algorithm cannot see other minimas just local, so it depends a lot of where does it starts
+"""
 
 # ╔═╡ 8261eb92-106e-11eb-2ccc-1348f232f5c3
 md"""
@@ -1214,7 +1246,7 @@ TODO = html"<span style='display: inline; font-size: 2em; color: purple; font-we
 # ╟─0f0b7ec4-112c-11eb-3399-59e22df07355
 # ╠═cbf0a27a-12e8-11eb-379d-85550b942ceb
 # ╠═861c592e-d271-46d5-83f7-5b8b337479b7
-# ╠═66198242-1262-11eb-1b0f-37c58199c754
+# ╟─66198242-1262-11eb-1b0f-37c58199c754
 # ╟─abc54b82-10b9-11eb-1641-817e2f043d26
 # ╟─3d44c264-10b9-11eb-0895-dbfc22ba0c37
 # ╠═2b79b698-10b9-11eb-3bde-53fc1c48d5f7
@@ -1233,9 +1265,9 @@ TODO = html"<span style='display: inline; font-size: 2em; color: purple; font-we
 # ╠═fff7754c-12c4-11eb-2521-052af1946b66
 # ╟─4d0efa66-12c6-11eb-2027-53d34c68d5b0
 # ╠═b74d94b8-10bf-11eb-38c1-9f39dfcb1096
-# ╠═15b50428-1264-11eb-163e-23e2f3590502
+# ╟─15b50428-1264-11eb-163e-23e2f3590502
 # ╟─ab72fdbe-10be-11eb-3b33-eb4ab41730d6
-# ╠═f8009ea7-b9e7-4c55-bbe5-98c1b15f7777
+# ╟─f8009ea7-b9e7-4c55-bbe5-98c1b15f7777
 # ╟─990236e0-10be-11eb-333a-d3080a224d34
 # ╟─d21fad2a-1253-11eb-304a-2bacf9064d0d
 # ╟─518fb3aa-106e-11eb-0fcd-31091a8f12db
@@ -1244,14 +1276,16 @@ TODO = html"<span style='display: inline; font-size: 2em; color: purple; font-we
 # ╟─517efa24-1244-11eb-1f81-b7f95b87ce3b
 # ╠═51a0138a-1244-11eb-239f-a7413e2e44e4
 # ╠═4b791b76-12cd-11eb-1260-039c938f5443
+# ╠═edd962bb-6f0e-4ba9-bdaf-4918a8bcc01e
 # ╠═0a095a94-1245-11eb-001a-b908128532aa
 # ╟─51c9a25e-1244-11eb-014f-0bcce2273cee
-# ╟─58675b3c-1245-11eb-3548-c9cb8a6b3188
+# ╠═58675b3c-1245-11eb-3548-c9cb8a6b3188
 # ╟─b4bb4b3a-12ce-11eb-3fe5-ad7ccd73febb
 # ╟─586d0352-1245-11eb-2504-05d0aa2352c6
 # ╟─589b2b4c-1245-11eb-1ec7-693c6bda97c4
 # ╟─58b45a0e-1245-11eb-04d1-23a1f3a0f242
-# ╠═68274534-1103-11eb-0d62-f1acb57721bc
+# ╟─68274534-1103-11eb-0d62-f1acb57721bc
+# ╟─798c3e7d-59d9-4f00-a2d2-d3cf47d82a0b
 # ╟─82539bbe-106e-11eb-0e9e-170dfa6a7dad
 # ╟─b394b44e-1245-11eb-2f86-8d10113e8cfc
 # ╠═bd8522c6-12e8-11eb-306c-c764f78486ef
@@ -1277,7 +1311,7 @@ TODO = html"<span style='display: inline; font-size: 2em; color: purple; font-we
 # ╠═34dc4b02-1248-11eb-26b2-5d2610cfeb41
 # ╟─f46aeaf0-1246-11eb-17aa-2580fdbcfa5a
 # ╟─e3120c18-1246-11eb-3bf4-7f4ac45856e0
-# ╠═ebca11d8-12c9-11eb-3dde-c546eccf40fc
+# ╟─ebca11d8-12c9-11eb-3dde-c546eccf40fc
 # ╟─9fd2956a-1248-11eb-266d-f558cda55702
 # ╠═852be3c4-12e8-11eb-1bbb-5fbc0da74567
 # ╠═8a114ca8-12e8-11eb-2de6-9149d1d3bc3d
@@ -1293,7 +1327,7 @@ TODO = html"<span style='display: inline; font-size: 2em; color: purple; font-we
 # ╟─5e0f16b4-12e3-11eb-212f-e565f97adfed
 # ╟─b6ae4d7e-12e6-11eb-1f92-c95c040d4401
 # ╟─a03890d6-1248-11eb-37ee-85b0a5273e0c
-# ╠═6d1ee93e-1103-11eb-140f-63fca63f8b06
+# ╟─6d1ee93e-1103-11eb-140f-63fca63f8b06
 # ╟─8261eb92-106e-11eb-2ccc-1348f232f5c3
 # ╠═65e691e4-124a-11eb-38b1-b1732403aa3d
 # ╟─6f4aa432-1103-11eb-13da-fdd9eefc7c86
