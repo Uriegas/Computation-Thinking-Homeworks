@@ -331,7 +331,14 @@ Let's define a type `Agent`. `Agent` contains a `position` (of type `Coordinate`
 @enum InfectionStatus S I R
 
 # ╔═╡ cf2f3b98-09a0-11eb-032a-49cc8c15e89c
-# define agent struct here:
+begin
+	mutable struct Agent
+		status::InfectionStatus
+		position::Coordinate
+		# num_infected::Int64
+	end
+	Agent(c) = Agent(S, c)
+end
 
 # ╔═╡ 814e888a-0954-11eb-02e5-0964c7410d30
 md"""
@@ -342,13 +349,15 @@ It returns a `Vector` of `N` randomly generated `Agent`s. Their coordinates are 
 """
 
 # ╔═╡ 0cfae7ba-0a69-11eb-3690-d973d70e47f4
-# function initialize(N::Number, L::Number)
-	
-# 	return missing
-# end
+function initialize(N::Number, L::Number)
+	coordinates = [Coordinate(i,j) for i ∈ -L:L, j ∈ -L:L]
+	x = [Agent(rand(coordinates)) for _ ∈ 1:N]
+	x[1].status = I
+	return x
+end
 
 # ╔═╡ 1d0f8eb4-0a46-11eb-38e7-63ecbadbfa20
-# initialize(3, 10)
+initialize(3, 10)
 
 # ╔═╡ e0b0880c-0a47-11eb-0db2-f760bbbf9c11
 # Color based on infection status
@@ -361,10 +370,10 @@ else
 end
 
 # ╔═╡ b5a88504-0a47-11eb-0eda-f125d419e909
-# position(a::Agent) = a.position # uncomment this line
+position(a::Agent) = a.position
 
 # ╔═╡ 87a4cdaa-0a5a-11eb-2a5e-cfaf30e942ca
-# color(a::Agent) = color(a.status) # uncomment this line
+color(a::Agent) = color(a.status)
 
 # ╔═╡ 49fa8092-0a43-11eb-0ba9-65785ac6a42f
 md"""
@@ -375,16 +384,18 @@ You can use the keyword argument `c=color.(agents)` inside your call to the plot
 """
 
 # ╔═╡ 1ccc961e-0a69-11eb-392b-915be07ef38d
-# function visualize(agents::Vector, L)
-	
-# 	return missing
-# end
+function visualize(agents::Vector, L)
+	p = plot(ratio=1)
+	scatter!(p, make_tuple.([a.position for a ∈ agents]); c=color.(agents), 
+		label=nothing)
+	return p
+end
 
 # ╔═╡ 1f96c80a-0a46-11eb-0690-f51c60e57c3f
 let
 	N = 20
 	L = 10
-#	visualize(initialize(N, L), L) # uncomment this line!
+	visualize(initialize(N, L), L)
 end
 
 # ╔═╡ f953e06e-099f-11eb-3549-73f59fed8132
@@ -415,10 +426,21 @@ Write a function `interact!` that takes two `Agent`s and a `CollisionInfectionRe
 - if the first agent is infectious, it recovers with some probability
 """
 
+# ╔═╡ a6a1fe56-f010-4ca1-9d5f-84df62642a9e
+bernoulli(p::Real) = rand() < p
+
 # ╔═╡ d1bcd5c4-0a4b-11eb-1218-7531e367a7ff
-#function interact!(agent::Agent, source::Agent, infection::CollisionInfectionRecovery)
-	#missing
-#end
+function interact!(agent::Agent, source::Agent, infection::CollisionInfectionRecovery)
+	if( source.position == agent.position)
+		if( source.status == I && bernoulli(infection.p_infection) == true )
+			agent.status = I
+		elseif( agent. status == I && bernoulli(infection.p_infection) == true )
+			source.status = I
+		end
+	elseif (source.status == I && bernoulli(infection.p_recovery) == true)
+		source.status = R
+	end
+end
 
 # ╔═╡ 34778744-0a5f-11eb-22b6-abe8b8fc34fd
 md"""
@@ -437,10 +459,18 @@ Your turn!
 """
 
 # ╔═╡ 24fe0f1a-0a69-11eb-29fe-5fb6cbf281b8
-# function step!(agents::Vector, L::Number, infection::AbstractInfection)
-	
-# 	return missing
-# end
+function step!(agents::Vector, L::Number, infection::AbstractInfection)
+	s_index = rand(1:length(agents))
+	source = agents[s_index]
+	source.position = collide_boundary(source.position + rand(possible_moves), L)
+	for i ∈ length(agents)
+		if i == s_index
+			continue
+		end 
+		interact!(agents[i], source, infection)
+	end
+	return agents 
+end
 
 # ╔═╡ 1fc3271e-0a45-11eb-0e8d-0fd355f5846b
 md"""
@@ -466,15 +496,19 @@ pandemic = CollisionInfectionRecovery(0.5, 0.00001)
 @bind k_sweeps Slider(1:10000, default=1000)
 
 # ╔═╡ 778c2490-0a62-11eb-2a6c-e7fab01c6822
-# let
-# 	N = 50
-# 	L = 40
+let
+	N = 50
+	L = 40
+	agents = initialize(N, L)
 	
-# 	plot_before = plot(1:3) # replace with your code
-# 	plot_after = plot(1:3)
+	plot_before = visualize(agents, L)
+	for _ ∈ 1:(k_sweeps*N)
+		step!(agents, L, pandemic)
+	end
+	plot_after = visualize(agents, L)
 	
-# 	plot(plot_before, plot_after)
-# end
+	plot(plot_before, plot_after, label = "")
+end
 
 # ╔═╡ e964c7f0-0a61-11eb-1782-0b728fab1db0
 md"""
@@ -492,9 +526,23 @@ k_sweep_max = 10000
 let
 	N = 50
 	L = 30
+	agents = initialize(N, L)
 	
-	# agents = initialize(N, L)
+	count_infections(i::InfectionStatus) = count(a->a.status == i, agents)
+	Sᵥ = [count_infections(S)]
+	Iᵥ = [count_infections(I)]
+	Rᵥ = [count_infections(R)]
 	# compute k_sweep_max number of sweeps and plot the SIR
+	for _ ∈ 2:(k_sweep_max*N)
+		step!(agents, L, pandemic)
+		push!(Sᵥ, count_infections(S))
+		push!(Iᵥ, count_infections(I))
+		push!(Rᵥ, count_infections(R))
+	end
+	Sᵥ
+	plot(Sᵥ, label="S")
+	plot!(Iᵥ, label="I")
+	plot!(Rᵥ, label="R")
 end
 
 # ╔═╡ 201a3810-0a45-11eb-0ac9-a90419d0b723
@@ -543,7 +591,7 @@ md"""
 
 # ╔═╡ b1b1afda-0a66-11eb-2988-752405815f95
 need_different_parameters_because = md"""
-i say so
+I don't know
 """
 
 # ╔═╡ 05c80a0c-09a0-11eb-04dc-f97e306f1603
@@ -963,7 +1011,7 @@ bigbreak
 # ╠═0665aa3e-0a69-11eb-2b5d-cd718e3c7432
 # ╟─5efccd70-f265-4be9-8733-f4278a123628
 # ╟─1de70a5a-4ef8-437a-940e-b47887cbd944
-# ╟─fd49d753-1087-4e42-938e-1230d6302d67
+# ╠═fd49d753-1087-4e42-938e-1230d6302d67
 # ╟─ed2d616c-0a66-11eb-1839-edf8d15cf82a
 # ╟─3ed06c80-0954-11eb-3aee-69e4ccdc4f9d
 # ╠═35537320-0a47-11eb-12b3-931310f18dec
@@ -983,16 +1031,17 @@ bigbreak
 # ╠═e6dd8258-0a4b-11eb-24cb-fd5b3554381b
 # ╠═de88b530-0a4b-11eb-05f7-85171594a8e8
 # ╟─80f39140-0aef-11eb-21f7-b788c5eab5c9
+# ╠═a6a1fe56-f010-4ca1-9d5f-84df62642a9e
 # ╠═d1bcd5c4-0a4b-11eb-1218-7531e367a7ff
 # ╟─34778744-0a5f-11eb-22b6-abe8b8fc34fd
 # ╠═24fe0f1a-0a69-11eb-29fe-5fb6cbf281b8
 # ╟─1fc3271e-0a45-11eb-0e8d-0fd355f5846b
-# ╟─18552c36-0a4d-11eb-19a0-d7d26897af36
+# ╠═18552c36-0a4d-11eb-19a0-d7d26897af36
 # ╠═4e7fd58a-0a62-11eb-1596-c717e0845bd5
 # ╠═778c2490-0a62-11eb-2a6c-e7fab01c6822
 # ╟─e964c7f0-0a61-11eb-1782-0b728fab1db0
 # ╠═4d83dbd0-0a63-11eb-0bdc-757f0e721221
-# ╠═ef27de84-0a63-11eb-177f-2197439374c5
+# ╟─ef27de84-0a63-11eb-177f-2197439374c5
 # ╟─8475baf0-0a63-11eb-1207-23f789d00802
 # ╟─201a3810-0a45-11eb-0ac9-a90419d0b723
 # ╠═e5040c9e-0a65-11eb-0f45-270ab8161871
