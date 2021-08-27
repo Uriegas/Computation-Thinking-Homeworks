@@ -24,6 +24,9 @@ begin
     using Plots, PlutoUI, LinearAlgebra
 end
 
+# ╔═╡ 864c773a-ec40-4c4a-86b7-54c504fb3135
+using Statistics
+
 # ╔═╡ 19fe1ee8-0970-11eb-2a0d-7d25e7d773c6
 md"_homework 9, version 1_"
 
@@ -337,7 +340,7 @@ begin
 		position::Coordinate
 		# num_infected::Int64
 	end
-	Agent(c) = Agent(S, c)
+	Agent(c::Coordinate) = Agent(S, c)
 end
 
 # ╔═╡ 814e888a-0954-11eb-02e5-0964c7410d30
@@ -431,14 +434,16 @@ bernoulli(p::Real) = rand() < p
 
 # ╔═╡ d1bcd5c4-0a4b-11eb-1218-7531e367a7ff
 function interact!(agent::Agent, source::Agent, infection::CollisionInfectionRecovery)
-	if( source.position == agent.position)
-		if( source.status == I && bernoulli(infection.p_infection) == true )
-			agent.status = I
-		elseif( agent. status == I && bernoulli(infection.p_infection) == true )
-			source.status = I
+	if agent.status == I && bernoulli(infection.p_recovery)
+		agent.status = R
+	elseif agent.position == source.position
+		if agent.status == I && source.status == S && 					 
+				bernoulli(infection.p_infection)
+				source.status = I
+		elseif source.status == I && agent.status == S && 
+				bernoulli(infection.p_infection)
+				agent.status = I
 		end
-	elseif (source.status == I && bernoulli(infection.p_recovery) == true)
-		source.status = R
 	end
 end
 
@@ -463,7 +468,7 @@ function step!(agents::Vector, L::Number, infection::AbstractInfection)
 	s_index = rand(1:length(agents))
 	source = agents[s_index]
 	source.position = collide_boundary(source.position + rand(possible_moves), L)
-	for i ∈ length(agents)
+	for i ∈ 1:length(agents)
 		if i == s_index
 			continue
 		end 
@@ -493,7 +498,7 @@ plot(plot_before, plot_after)
 pandemic = CollisionInfectionRecovery(0.5, 0.00001)
 
 # ╔═╡ 4e7fd58a-0a62-11eb-1596-c717e0845bd5
-@bind k_sweeps Slider(1:10000, default=1000)
+@bind k_sweeps Slider(1:10000, default=1000, show_value=true)
 
 # ╔═╡ 778c2490-0a62-11eb-2a6c-e7fab01c6822
 let
@@ -507,7 +512,7 @@ let
 	end
 	plot_after = visualize(agents, L)
 	
-	plot(plot_before, plot_after, label = "")
+	plot(plot_before, plot_after)
 end
 
 # ╔═╡ e964c7f0-0a61-11eb-1782-0b728fab1db0
@@ -540,9 +545,9 @@ let
 		push!(Rᵥ, count_infections(R))
 	end
 	Sᵥ
-	plot(Sᵥ, label="S")
-	plot!(Iᵥ, label="I")
-	plot!(Rᵥ, label="R")
+	plot(Sᵥ, label="S", lw=2)
+	plot!(Iᵥ, label="I", lw=2)
+	plot!(Rᵥ, label="R", lw=2)
 end
 
 # ╔═╡ 201a3810-0a45-11eb-0ac9-a90419d0b723
@@ -558,12 +563,39 @@ This an optional exercise, and our solution to 2️⃣ is given below.
 """
 
 # ╔═╡ e5040c9e-0a65-11eb-0f45-270ab8161871
-# let
-# 	N = 50
-# 	L = 30
-	
-# 	missing
-# end
+let
+	count_infections(i::InfectionStatus) = count(a->a.status == i, x)
+
+    N = 50
+    L = 40
+
+    x = initialize(N, L)
+    
+    # initialize to empty arrays
+    Ss, Is, Rs = Int[], Int[], Int[]
+    
+    Tmax = 200
+    
+    @gif for t in 1:Tmax
+        for i in 1:50N
+            step!(x, L, pandemic)
+        end
+
+        #... track S, I, R in Ss Is and Rs
+        push!(Ss, count_infections(S))
+		push!(Is, count_infections(I))
+		push!(Rs, count_infections(R))
+		
+        left = visualize(x, L)
+    
+        right = plot(xlim=(1,Tmax), ylim=(1,N), size=(600,300))
+        plot!(right, 1:t, Ss, color=color(S), label="S")
+        plot!(right, 1:t, Is, color=color(I), label="I")
+        plot!(right, 1:t, Rs, color=color(R), label="R")
+    
+        plot(left, right)
+    end
+end
 
 # ╔═╡ 2031246c-0a45-11eb-18d3-573f336044bf
 md"""
@@ -572,13 +604,54 @@ md"""
 """
 
 # ╔═╡ 63dd9478-0a45-11eb-2340-6d3d00f9bb5f
-causes_outbreak = CollisionInfectionRecovery(0.5, 0.001)
+causes_outbreak = CollisionInfectionRecovery(0.5, 0.000005)
 
 # ╔═╡ 269955e4-0a46-11eb-02cc-1946dc918bfa
 does_not_cause_outbreak = CollisionInfectionRecovery(0.5, 0.001)
 
-# ╔═╡ 4d4548fe-0a66-11eb-375a-9313dc6c423d
+# ╔═╡ ae4d69b8-046a-4f76-9330-1c560c410202
+does_not_cause_outbreak.p_recovery
 
+# ╔═╡ 4d4548fe-0a66-11eb-375a-9313dc6c423d
+let
+	N = 100
+	L = 20
+	agents = initialize(N, L)
+	
+	count_infections(i::InfectionStatus) = count(a->a.status == i, agents)
+	Sᵥ = [count_infections(S)]
+	Iᵥ = [count_infections(I)]
+	Rᵥ = [count_infections(R)]
+	
+	for _ ∈ 2:(k_sweep_max*N)
+		step!(agents, L, causes_outbreak)
+		push!(Sᵥ, count_infections(S))
+		push!(Iᵥ, count_infections(I))
+		push!(Rᵥ, count_infections(R))
+	end
+	outbreak = plot(Sᵥ, label="S", lw=2; title="Outbreak: i=$(causes_outbreak.p_infection), r=$(causes_outbreak.p_recovery)")
+	plot!(Iᵥ, label="I", lw=2)
+	plot!(Rᵥ, label="R", lw=2)
+	
+	agents = initialize(N, L)
+	
+	Sₑ = [count_infections(S)]
+	Iₑ = [count_infections(I)]
+	Rₑ = [count_infections(R)]
+	
+	for _ ∈ 2:(k_sweep_max*N)
+		step!(agents, L, does_not_cause_outbreak)
+		push!(Sₑ, count_infections(S))
+		push!(Iₑ, count_infections(I))
+		push!(Rₑ, count_infections(R))
+	end
+	
+	without_outbreak = plot(Sₑ, label="S", lw=2; title="No outbreak: i=$(does_not_cause_outbreak.p_infection), r=$(does_not_cause_outbreak.p_recovery)")
+	plot!(Iₑ, label="I", lw=2)
+	plot!(Rₑ, label="R", lw=2)
+	
+	plot(without_outbreak, outbreak)
+end
 
 # ╔═╡ 20477a78-0a45-11eb-39d7-93918212a8bc
 md"""
@@ -586,12 +659,63 @@ md"""
 👉 With the parameters of Exercise 3.2, run 50 simulations. Plot $S$, $I$ and $R$ as a function of time for each of them (with transparency!). This should look qualitatively similar to what you saw in the previous homework. You probably need different `p_infection` and `p_recovery` values from last week. Why?
 """
 
-# ╔═╡ 601f4f54-0a45-11eb-3d6c-6b9ec75c6d4a
+# ╔═╡ ab070bd0-be7a-41bb-a355-30d56a3e568f
+function sir_mean_error_plot(simulations::Vector{<:NamedTuple}, sweeps)
+	p = plot()
+	
+	μₛ= mean(map(s -> s.S, simulations))
+	μᵢ= mean(map(s -> s.I, simulations))
+	μᵣ= mean(map(s -> s.R, simulations))
+	
+	σₛ= std(map(s -> s.S, simulations))
+	σᵢ= std(map(s -> s.I, simulations))
+	σᵣ= std(map(s -> s.R, simulations))
+	
+	plot!(p, 1:sweeps, μₛ, alpha=1, lw=3, label="S", ribbon=σₛ)
+	plot!(p, 1:sweeps, μᵢ, alpha=1, lw=3, label="I", ribbon=σᵢ)
+	plot!(p, 1:sweeps, μᵣ, alpha=1, lw=3, label="R", ribbon=σᵣ)
 
+	return p
+end
+
+# ╔═╡ 8de0c8a6-b666-4429-9bc1-18d11586c4db
+let
+	N = 50
+	L = 40
+	# sweeps = k_sweeps
+	sweeps = 5000
+	infection = causes_outbreak
+	
+	num_simulations = 20
+	
+	simulations = Vector{NamedTuple}()
+	for _ in 1:num_simulations
+		agents = initialize(N, L)
+
+		totals = Vector()
+		for _ in 1:sweeps
+			agents = step!(agents, L, infection)
+			t = (
+				S = count(a -> a.status == S, agents),
+				I = count(a -> a.status == I, agents),
+				R = count(a -> a.status == R, agents),
+			)
+			push!(totals, t)  
+		end
+		s = (
+			S = map(s -> s.S, totals),
+			I = map(s -> s.I, totals),
+			R = map(s -> s.R, totals),
+		)
+		push!(simulations, s)
+	end
+
+	sir_mean_error_plot(simulations, sweeps)
+end
 
 # ╔═╡ b1b1afda-0a66-11eb-2988-752405815f95
 need_different_parameters_because = md"""
-I don't know
+The parameters need to be different due to the fact that we are considering the location and therefore infection only happens when two agents interact that makes more difficult that an infection happens.
 """
 
 # ╔═╡ 05c80a0c-09a0-11eb-04dc-f97e306f1603
@@ -969,7 +1093,7 @@ bigbreak
 # ╟─1bba5552-0970-11eb-1b9a-87eeee0ecc36
 # ╟─49567f8e-09a2-11eb-34c1-bb5c0b642fe8
 # ╟─181e156c-0970-11eb-0b77-49b143cc0fc0
-# ╠═1f299cc6-0970-11eb-195b-3f951f92ceeb
+# ╟─1f299cc6-0970-11eb-195b-3f951f92ceeb
 # ╟─2848996c-0970-11eb-19eb-c719d797c322
 # ╠═2dcb18d0-0970-11eb-048a-c1734c6db842
 # ╟─69d12414-0952-11eb-213d-2f9e13e4b418
@@ -1036,7 +1160,7 @@ bigbreak
 # ╟─34778744-0a5f-11eb-22b6-abe8b8fc34fd
 # ╠═24fe0f1a-0a69-11eb-29fe-5fb6cbf281b8
 # ╟─1fc3271e-0a45-11eb-0e8d-0fd355f5846b
-# ╠═18552c36-0a4d-11eb-19a0-d7d26897af36
+# ╟─18552c36-0a4d-11eb-19a0-d7d26897af36
 # ╠═4e7fd58a-0a62-11eb-1596-c717e0845bd5
 # ╠═778c2490-0a62-11eb-2a6c-e7fab01c6822
 # ╟─e964c7f0-0a61-11eb-1782-0b728fab1db0
@@ -1044,15 +1168,18 @@ bigbreak
 # ╟─ef27de84-0a63-11eb-177f-2197439374c5
 # ╟─8475baf0-0a63-11eb-1207-23f789d00802
 # ╟─201a3810-0a45-11eb-0ac9-a90419d0b723
-# ╠═e5040c9e-0a65-11eb-0f45-270ab8161871
+# ╟─e5040c9e-0a65-11eb-0f45-270ab8161871
 # ╟─f9b9e242-0a53-11eb-0c6a-4d9985ef1687
 # ╟─2031246c-0a45-11eb-18d3-573f336044bf
 # ╠═63dd9478-0a45-11eb-2340-6d3d00f9bb5f
 # ╠═269955e4-0a46-11eb-02cc-1946dc918bfa
-# ╠═4d4548fe-0a66-11eb-375a-9313dc6c423d
+# ╠═ae4d69b8-046a-4f76-9330-1c560c410202
+# ╟─4d4548fe-0a66-11eb-375a-9313dc6c423d
 # ╟─20477a78-0a45-11eb-39d7-93918212a8bc
-# ╠═601f4f54-0a45-11eb-3d6c-6b9ec75c6d4a
-# ╠═b1b1afda-0a66-11eb-2988-752405815f95
+# ╠═864c773a-ec40-4c4a-86b7-54c504fb3135
+# ╠═ab070bd0-be7a-41bb-a355-30d56a3e568f
+# ╠═8de0c8a6-b666-4429-9bc1-18d11586c4db
+# ╟─b1b1afda-0a66-11eb-2988-752405815f95
 # ╟─e84e0944-0a66-11eb-12d3-e12ae10f39a6
 # ╟─05c80a0c-09a0-11eb-04dc-f97e306f1603
 # ╟─b53d5608-0a41-11eb-2325-016636a22f71
